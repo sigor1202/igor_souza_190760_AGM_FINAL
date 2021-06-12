@@ -26,11 +26,10 @@ public class Game extends ApplicationAdapter {
 	private float posicaoHorizontalPassaro=0;
 	private float espacoEntreCanos;
 
-
-
 	private int pontos = 0;
 	private int pontuacaoMaxima=0;
 	private int estadoJogo =0;
+	private int estadoMoeda;
 	private float gravidade = 0;
 
 	private Texture[] passaros;
@@ -60,6 +59,16 @@ public class Game extends ApplicationAdapter {
 	//cria a variavel de preferencias
 	Preferences preferencias;
 
+	//variaveis pras moedas
+	private Random randomMoeda;
+	private Texture moedaPrata;
+	private Texture moedaDourada;
+	private Circle circuloD;
+	private Circle circuloP;
+	private float posicaoMoedaDouradaHorizontal;
+	private float posicaoMoedaPrataHorizontal;
+	boolean randomizarMoeda=true;
+
 	@Override
 	//classe semelhante ao onCreate
 	public void create () {
@@ -72,6 +81,7 @@ public class Game extends ApplicationAdapter {
 
 	private void inicializaObjetos() {
 		random = new Random();
+		randomMoeda = new Random();
 		batch = new SpriteBatch();
 
 		//pega a altura e largura da tela
@@ -80,6 +90,9 @@ public class Game extends ApplicationAdapter {
 		//seta a altura do passaro na vertical
 		posicaoInicialVerticalPassaro = alturaDispositivo/2;
 		posicaoCanoHorizontal = larguraDispositivo;
+		posicaoMoedaDouradaHorizontal = larguraDispositivo+larguraDispositivo/2;
+		posicaoMoedaPrataHorizontal = larguraDispositivo+larguraDispositivo/2;
+
 		//seta o espaço entre os canas
 		espacoEntreCanos = 300;
 
@@ -100,7 +113,9 @@ public class Game extends ApplicationAdapter {
 		circuloPassaro = new Circle();
 		retanguloCanoCima = new Rectangle();
 		retanguloCanoBaixo = new Rectangle();
-		//seta os nons nas variaveis
+		circuloD = new Circle();
+		circuloP = new Circle();
+		//seta os sons nas variaveis
 		somVoando= Gdx.audio.newSound(Gdx.files.internal("som_asa.wav"));
 		somColisao = Gdx.audio.newSound(Gdx.files.internal("som_batida.wav"));
 		somPontuacao = Gdx.audio.newSound(Gdx.files.internal("som_pontos.wav"));
@@ -122,6 +137,9 @@ public class Game extends ApplicationAdapter {
 		canoBaixo = new Texture("cano_baixo_maior.png");
 		canoTopo = new Texture("cano_topo_maior.png");
 		gameOver = new Texture("game_over.png");
+
+		moedaDourada = new Texture("moeda_dourada.png");
+		moedaPrata = new Texture("moeda_prata.png");
 	}
 
 	@Override
@@ -129,16 +147,18 @@ public class Game extends ApplicationAdapter {
 	public void render () {
 
 		verificaEstadojogo();
+		moeda();
 		desenharTexturas();
 		detectarColisao();
 		validaPontos();
 
+
 	}
 
 	private void detectarColisao() {
-		//configura os colliders
+		//configura os colliders do passaro e dos canos
 		circuloPassaro.set(50 + passaros[0].getWidth()/2,
-				posicaoInicialVerticalPassaro+passaros[0].getHeight()/2,passaros[0].getHeight());
+				posicaoInicialVerticalPassaro+passaros[0].getHeight()/2,passaros[0].getHeight()/2);
 
 		retanguloCanoBaixo.set(posicaoCanoHorizontal,
 				alturaDispositivo/2-canoBaixo.getHeight()-espacoEntreCanos/2+posicaoCanoVertical,canoBaixo.getWidth(),
@@ -147,9 +167,14 @@ public class Game extends ApplicationAdapter {
 		retanguloCanoCima.set(posicaoCanoHorizontal,
 				alturaDispositivo/2 + espacoEntreCanos/2 + posicaoCanoVertical,
 				canoTopo.getWidth(),canoTopo.getHeight());
+
+		//collider moedas
+
+		circuloP.set(posicaoMoedaPrataHorizontal,alturaDispositivo/2 ,moedaPrata.getHeight());
 		//cria os booleans para verificar a colisão
 		boolean bateuCanoCima = Intersector.overlaps(circuloPassaro,retanguloCanoCima);
 		boolean bateuCanoBaixo = Intersector.overlaps(circuloPassaro,retanguloCanoBaixo);
+		boolean moedaPrata = Intersector.overlaps(circuloPassaro,circuloP);
 
 		//verifica se bateu
 		if(bateuCanoBaixo || bateuCanoCima){
@@ -157,6 +182,14 @@ public class Game extends ApplicationAdapter {
 				somColisao.play();
 				estadoJogo=2;
 			}
+		}
+
+		if(moedaPrata)
+		{
+			pontos = pontos+5;
+			moedaPrata=false;
+			randomizarMoeda=true;
+
 		}
 	}
 
@@ -177,6 +210,26 @@ public class Game extends ApplicationAdapter {
 		if(variacao > 3)
 			variacao = 0;
 	}
+
+	private void moeda(){
+		if(estadoJogo==1)
+		{
+			posicaoMoedaPrataHorizontal -= Gdx.graphics.getDeltaTime()*400;
+		}
+		estadoMoeda = randomMoeda.nextInt(8)+2;
+		if(randomizarMoeda)
+		{
+			posicaoMoedaPrataHorizontal = larguraDispositivo/2+larguraDispositivo * estadoMoeda;
+			randomizarMoeda=false;
+		}
+		if(posicaoMoedaPrataHorizontal<-moedaPrata.getWidth())
+		{
+			posicaoMoedaPrataHorizontal = larguraDispositivo/2 + larguraDispositivo * estadoMoeda;
+		}
+
+
+	}
+
 
 	private void verificaEstadojogo() {
 
@@ -203,8 +256,10 @@ public class Game extends ApplicationAdapter {
 			}
 			//faz o cano se mover
 			posicaoCanoHorizontal -= Gdx.graphics.getDeltaTime()*400;
-			if (posicaoCanoHorizontal < - canoBaixo.getHeight()){
+			if (posicaoCanoHorizontal < - canoTopo.getWidth()){
+
 				posicaoCanoHorizontal = larguraDispositivo;
+
 				posicaoCanoVertical = random.nextInt(400)-200;
 				passouCano = false;
 			}
@@ -236,10 +291,10 @@ public class Game extends ApplicationAdapter {
 				posicaoHorizontalPassaro =0;
 				posicaoInicialVerticalPassaro = alturaDispositivo/2;
 				posicaoCanoHorizontal = larguraDispositivo;
+				posicaoMoedaPrataHorizontal =   larguraDispositivo/2 + larguraDispositivo * estadoMoeda;
 			}
 
 		}
-
 
 	}
 
@@ -247,12 +302,16 @@ public class Game extends ApplicationAdapter {
 	private void desenharTexturas() {
 		batch.begin();
 
-		//desenha e configura o onbeto na tela
+		//desenha e configura o objeto na tela
 		batch.draw(fundo, 0,0,larguraDispositivo,alturaDispositivo);
 		batch.draw(passaros[(int) variacao],50+posicaoHorizontalPassaro,posicaoInicialVerticalPassaro);
 		batch.draw(canoBaixo, posicaoCanoHorizontal, alturaDispositivo/2- canoBaixo.getHeight()-espacoEntreCanos/2+ posicaoCanoVertical);
 		batch.draw(canoTopo, posicaoCanoHorizontal, alturaDispositivo/2 + espacoEntreCanos/2 + posicaoCanoVertical);
+		//moeda
+		//batch.draw(moedaDourada, posicaoMoedaDouradaHorizontal ,alturaDispositivo/2 + espacoEntreCanos/2 + posicaoCanoVertical-espacoEntreCanos/2);
+		batch.draw(moedaPrata, posicaoMoedaPrataHorizontal ,alturaDispositivo/2 );
 		textoPontuacao.draw(batch, String.valueOf(pontos), larguraDispositivo/2,alturaDispositivo-100);
+
 		//se o estado deo jogo for igual a 2
 		if(estadoJogo==2){
 			//desnha na tela o game over
