@@ -29,7 +29,8 @@ public class Game extends ApplicationAdapter {
 	private int pontos = 0;
 	private int pontuacaoMaxima=0;
 	private int estadoJogo =0;
-	private int estadoMoeda;
+	private int randonMoedaP;
+	private int randonMoedaD;
 	private float gravidade = 0;
 
 	private Texture[] passaros;
@@ -56,18 +57,23 @@ public class Game extends ApplicationAdapter {
 	Sound somVoando;
 	Sound somColisao;
 	Sound somPontuacao;
+
 	//cria a variavel de preferencias
 	Preferences preferencias;
 
 	//variaveis pras moedas
-	private Random randomMoeda;
+	private Random randomMoedaPrata;
+	private Random randomMoedaDourada;
 	private Texture moedaPrata;
 	private Texture moedaDourada;
+	private Texture inicio;
 	private Circle circuloD;
 	private Circle circuloP;
 	private float posicaoMoedaDouradaHorizontal;
 	private float posicaoMoedaPrataHorizontal;
-	boolean randomizarMoeda=true;
+	boolean randomizarMoedaPrata =true;
+	boolean randomizarMoedaDourada =true;
+	Sound somMoeda;
 
 	@Override
 	//classe semelhante ao onCreate
@@ -81,7 +87,8 @@ public class Game extends ApplicationAdapter {
 
 	private void inicializaObjetos() {
 		random = new Random();
-		randomMoeda = new Random();
+		randomMoedaPrata = new Random();
+		randomMoedaDourada = new Random();
 		batch = new SpriteBatch();
 
 		//pega a altura e largura da tela
@@ -103,11 +110,11 @@ public class Game extends ApplicationAdapter {
 		//cria e configura e texto de reiniciar
 		textoReiniciar = new BitmapFont();
 		textoReiniciar.setColor(Color.GREEN);
-		textoReiniciar.getData().setScale(3);
+		textoReiniciar.getData().setScale(2);
 		//cria e configura e texto melhor pontuação
 		textoMelhorPontuacao = new BitmapFont();
 		textoMelhorPontuacao.setColor(Color.RED);
-		textoMelhorPontuacao.getData().setScale(3);
+		textoMelhorPontuacao.getData().setScale(2);
 		//cria os objetos para o collider
 		shapeRenderer = new ShapeRenderer();
 		circuloPassaro = new Circle();
@@ -119,6 +126,7 @@ public class Game extends ApplicationAdapter {
 		somVoando= Gdx.audio.newSound(Gdx.files.internal("som_asa.wav"));
 		somColisao = Gdx.audio.newSound(Gdx.files.internal("som_batida.wav"));
 		somPontuacao = Gdx.audio.newSound(Gdx.files.internal("som_pontos.wav"));
+		somMoeda = Gdx.audio.newSound(Gdx.files.internal("Som_Moeda.wav"));
 		//configura as preferencias
 		preferencias = Gdx.app.getPreferences("flappyBird");
 		pontuacaoMaxima = preferencias.getInteger("pontuacaoMaxima",0);
@@ -140,6 +148,7 @@ public class Game extends ApplicationAdapter {
 
 		moedaDourada = new Texture("moeda_dourada.png");
 		moedaPrata = new Texture("moeda_prata.png");
+		inicio = new Texture("flappy-bird-logo.png");
 	}
 
 	@Override
@@ -171,10 +180,12 @@ public class Game extends ApplicationAdapter {
 		//collider moedas
 
 		circuloP.set(posicaoMoedaPrataHorizontal,alturaDispositivo/2 ,moedaPrata.getHeight());
+		circuloD.set(posicaoMoedaDouradaHorizontal, alturaDispositivo/2,moedaDourada.getHeight());
 		//cria os booleans para verificar a colisão
 		boolean bateuCanoCima = Intersector.overlaps(circuloPassaro,retanguloCanoCima);
 		boolean bateuCanoBaixo = Intersector.overlaps(circuloPassaro,retanguloCanoBaixo);
 		boolean moedaPrata = Intersector.overlaps(circuloPassaro,circuloP);
+		boolean moedaDourada = Intersector.overlaps(circuloPassaro,circuloD);
 
 		//verifica se bateu
 		if(bateuCanoBaixo || bateuCanoCima){
@@ -184,12 +195,31 @@ public class Game extends ApplicationAdapter {
 			}
 		}
 
+		//verifica se colidiu com a moeda prata
 		if(moedaPrata)
 		{
+			//da play no som
+			somMoeda.play();
+			//adiciona mais 5 nos pontos
 			pontos = pontos+5;
+			//retorna o boolean da colisão para faslso
 			moedaPrata=false;
-			randomizarMoeda=true;
+			//seta a condição de randomizar a moeda prata como true
+			randomizarMoedaPrata =true;
 
+		}
+
+		//verifica se colidiu com a moeda Dourada
+		if(moedaDourada)
+		{
+			//da play no som
+			somMoeda.play();
+			//adiciona mais 10 nos pontos
+			pontos=pontos+10;
+			//retorna o boolean da colisão para faslso
+			moedaDourada=false;
+			//seta a condição de randomizar s moeda dourada como true
+			randomizarMoedaDourada = true;
 		}
 	}
 
@@ -212,22 +242,68 @@ public class Game extends ApplicationAdapter {
 	}
 
 	private void moeda(){
+		//se o estado do jogo for iguaal a 1 aas moedas começam a se mover
 		if(estadoJogo==1)
 		{
 			posicaoMoedaPrataHorizontal -= Gdx.graphics.getDeltaTime()*400;
+			posicaoMoedaDouradaHorizontal -= Gdx.graphics.getDeltaTime()*400;
 		}
-		estadoMoeda = randomMoeda.nextInt(8)+2;
-		if(randomizarMoeda)
+		//randomiza e guarda em uma variavel o valor para usar na posição da moeda quando a condição for cumprida
+		randonMoedaP = randomMoedaPrata.nextInt(8)+2;
+		randonMoedaD = randomMoedaDourada.nextInt(12)+2;
+
+		//se a condição para randomizar a moeda prata for true, randomiza e seta como false novamente
+		if(randomizarMoedaPrata)
 		{
-			posicaoMoedaPrataHorizontal = larguraDispositivo/2+larguraDispositivo * estadoMoeda;
-			randomizarMoeda=false;
+			posicaoMoedaPrataHorizontal = larguraDispositivo/2+larguraDispositivo * randonMoedaP;
+			randomizarMoedaPrata =false;
 		}
+
+		//se a condição para randomizar a moeda doura for true, randomiza e seta como false novamente
+		if(randomizarMoedaDourada)
+		{
+			posicaoMoedaDouradaHorizontal = larguraDispositivo/2+larguraDispositivo * randonMoedaD;
+			randomizarMoedaDourada =false;
+		}
+
+		//chama a função que valida a corrigi a popsição das moedas para evitar problemas
+		validaPosicao();
+
+	}
+
+	private void validaPosicao()
+	{
+		/*se a posição horizontal da moeda for menor que a largura dela randomiza a posição novamente
+		para evitar que a moeda pare de aparecer se o player não pegar a moeda prata*/
 		if(posicaoMoedaPrataHorizontal<-moedaPrata.getWidth())
 		{
-			posicaoMoedaPrataHorizontal = larguraDispositivo/2 + larguraDispositivo * estadoMoeda;
+			posicaoMoedaPrataHorizontal = larguraDispositivo/2 + larguraDispositivo * randonMoedaP;
 		}
 
+		/*se a posição horizontal da moeda for menor que a largura dela randomiza a posição novamente
+		para evitar que a moeda pare de aparecer se o player não pegar a moeda dourada*/
+		if(posicaoMoedaDouradaHorizontal<-moedaPrata.getWidth())
+		{
+			posicaoMoedaDouradaHorizontal = larguraDispositivo/2 + larguraDispositivo * randonMoedaD;
+		}
 
+		//verifica se a posição da moeda prata é igual a do cano e se for joga ela 100 pixels para frente
+		if(posicaoMoedaPrataHorizontal == posicaoCanoHorizontal)
+		{
+			posicaoMoedaPrataHorizontal = posicaoMoedaPrataHorizontal +100;
+		}
+
+		//verifica se a posição da moeda dourada é igual a do cano e se for joga ela 100 pixels para frente
+		if(posicaoMoedaDouradaHorizontal == posicaoCanoHorizontal)
+		{
+			posicaoMoedaDouradaHorizontal = posicaoMoedaPrataHorizontal +100;
+		}
+
+		//verifica se a posição das duas moedas é igual se sim joga a moda para frente
+		if(posicaoMoedaDouradaHorizontal == posicaoMoedaPrataHorizontal)
+		{
+			posicaoMoedaDouradaHorizontal = posicaoMoedaPrataHorizontal +larguraDispositivo;
+		}
 	}
 
 
@@ -291,7 +367,8 @@ public class Game extends ApplicationAdapter {
 				posicaoHorizontalPassaro =0;
 				posicaoInicialVerticalPassaro = alturaDispositivo/2;
 				posicaoCanoHorizontal = larguraDispositivo;
-				posicaoMoedaPrataHorizontal =   larguraDispositivo/2 + larguraDispositivo * estadoMoeda;
+				posicaoMoedaPrataHorizontal =   larguraDispositivo/2 + larguraDispositivo * randonMoedaP;
+				posicaoMoedaDouradaHorizontal =   larguraDispositivo/2 + larguraDispositivo * randonMoedaD;
 			}
 
 		}
@@ -308,7 +385,7 @@ public class Game extends ApplicationAdapter {
 		batch.draw(canoBaixo, posicaoCanoHorizontal, alturaDispositivo/2- canoBaixo.getHeight()-espacoEntreCanos/2+ posicaoCanoVertical);
 		batch.draw(canoTopo, posicaoCanoHorizontal, alturaDispositivo/2 + espacoEntreCanos/2 + posicaoCanoVertical);
 		//moeda
-		//batch.draw(moedaDourada, posicaoMoedaDouradaHorizontal ,alturaDispositivo/2 + espacoEntreCanos/2 + posicaoCanoVertical-espacoEntreCanos/2);
+		batch.draw(moedaDourada, posicaoMoedaDouradaHorizontal ,alturaDispositivo/2 );
 		batch.draw(moedaPrata, posicaoMoedaPrataHorizontal ,alturaDispositivo/2 );
 		textoPontuacao.draw(batch, String.valueOf(pontos), larguraDispositivo/2,alturaDispositivo-100);
 
@@ -317,9 +394,12 @@ public class Game extends ApplicationAdapter {
 			//desnha na tela o game over
 			batch.draw(gameOver,larguraDispositivo/2 - gameOver.getWidth()/2,alturaDispositivo/2);
 			//desenha na teala a frase TOQUE NA TELA PARA REINICIAR
-			textoReiniciar.draw(batch,"TOQUE NA TELA PARA REINICIAR!",larguraDispositivo/2 - 200,alturaDispositivo/2-gameOver.getHeight()/2);
+			textoReiniciar.draw(batch,"TOQUE NA TELA PARA REINICIAR!",larguraDispositivo/2 - 250,alturaDispositivo/2-gameOver.getHeight()/2);
 			// desenha a frase da melhor pontuação e concatena o valor
-			textoMelhorPontuacao.draw(batch,"SUA MELHOR PONTUAÇÃOÉ :"+pontuacaoMaxima+ "PONTOS",larguraDispositivo/2 - 300 ,alturaDispositivo/2-gameOver.getHeight()*2);
+			textoMelhorPontuacao.draw(batch,"SUA MELHOR PONTUAÇÃO É :"+pontuacaoMaxima+ " PONTOS",larguraDispositivo/2 - 300 ,alturaDispositivo/2-gameOver.getHeight()*2);
+		}
+		if(estadoJogo ==0){
+			batch.draw(inicio, larguraDispositivo / 2 - inicio.getWidth()/2, alturaDispositivo / 2);
 		}
 
 
